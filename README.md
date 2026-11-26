@@ -40,7 +40,9 @@ Die Platine arbeitet mit **230 V Netzspannung**, und Klemme 1 des Kessels liegt 
 
 ## Lizenz
 
-Software (Firmware, HA-Automationen, Skripte): **MIT**. Hardware und Doku: **CERN-OHL-P-2.0**. Details in [`LICENSE`](LICENSE).
+Software (Firmware, HA-Automationen, Skripte): **MIT**. Hardware und Doku: **CERN-OHL-P-2.0**. Details in [`LICENSE`](LICENSE) und [`hardware/LICENSE`](hardware/LICENSE).
+
+Kurz: Jeder darf nachbauen, ändern, verkaufen und weitergeben, auch kommerziell, solange der Copyright-Hinweis erhalten bleibt. Es gibt keinerlei Gewährleistung.
 
 ## Autor
 

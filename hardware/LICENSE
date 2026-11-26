@@ -1,0 +1,9 @@
+Copyright (c) 2026 Fabian Harder
+
+Die Hardware in diesem Ordner (Platine, Gerber, Stückliste, Schaltplan, Ansichten)
+sowie die Dokumentation in docs/ und fs3601/ stehen unter der
+CERN Open Hardware Licence Version 2 – Permissive (CERN-OHL-P-2.0):
+https://ohwr.org/cern_ohl_p_v2.txt
+
+Ausgenommen sind die Skripte in hardware/skripte/; sie stehen unter der
+MIT-Lizenz (siehe ../LICENSE).
