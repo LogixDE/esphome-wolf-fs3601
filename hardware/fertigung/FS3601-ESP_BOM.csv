@@ -1,0 +1,22 @@
+Pos;Anzahl;Referenz;Wert;Bauform;Hersteller-Teil;Bezugsquelle / Bestell-Nr.;Bemerkung
+1;7;K1-K7;PhotoMOS 1 Form A (Schliesser) 60 V 0,5 A, Ron max. 2 Ohm;DIP-4 Knickbeine (W7,62);Toshiba TLP240A(TP1,F);AliExpress (Variante TLP240A SOP-4);nicht TLP240G
+2;1;K8;PhotoMOS 1 Form B (Oeffner) 60 V 0,15 A, Ron max. 16 Ohm;SOP-4 RM 2,54;IXYS/Littelfuse CPC1117N;Lager;Fallback-Bruecke K1-K2
+3;1;R1;13,0 kOhm 1 %;0603/0805;Yageo RC0805 13K;Reichelt YAG RC0805 13K;Grundwert - vor dem Einloeten messen, Soll 12,86-12,97 kOhm
+4;1;R2;68 Ohm;0603/0805;-;E24 (Sortiment);Bit 0
+5;1;R3;120 Ohm;0603/0805;-;E24 (Sortiment);Bit 1
+6;1;R4;220 Ohm;0603/0805;-;E24 (Sortiment);Bit 2
+7;1;R5;470 Ohm;0603/0805;-;E24 (Sortiment);Bit 3
+8;1;R6;910 Ohm;0603/0805;-;E24 (Sortiment);Bit 4
+9;1;R7;1,8 kOhm;0603/0805;-;E24 (Sortiment);Bit 5
+10;1;R8;5,11 kOhm 0,1 %;0603/0805;-;Reichelt SPR-0805 5,11K;Modus Aus
+11;8;R11-R18;390 Ohm 1 %;0805;-;Reichelt SMD-0805 390;LED-Strom ca. 5 mA
+12;1;D1;TVS bidirektional 12 V 400 W;SMA (Unterseite);P4SMAJ12CA;Reichelt P4SMAJ12CA;Ueberspannungsschutz Leitung
+13;1;D2;Schottky 80 V 1 A;SMA;Diodes B180-13-F;Reichelt B180-13-F;Rueckspeiseschutz
+14;1;C1;10 uF 16 V X5R;0805;Samsung CL21A106KOQNNNE;Reichelt CL21A106KOQNNNE;Pufferung 5 V
+15;2;J1,J3;Leiterplattenklemme 2-pol RM 5,08 Push-in;THT;Phoenix SPTH 1,5/2-5,08 (1472188);Reichelt SPTH 1,5 2 5,08;J1 Therme, J3 230 V~
+16;2;U1A,U1B;Buchsenleiste 1x8 RM 2,54;THT;Fischer BL1 08 Z;Reichelt FIS BL1 08 Z;Steckplatz Super Mini
+17;1;U1;ESP32-C3 Super Mini;Modul;-;-;mit Stiftleisten
+18;1;PS1;AC/DC 230 V~ -> 5 V 0,6 A;THT;Hi-Link HLK-PM01;-;3 kV isoliert
+19;1;F1;Sicherungshalter TR5;THT RM 5,08;Littelfuse 56000001009;Reichelt LITT 56000001009;-
+20;1;F1;Kleinstsicherung T 315 mA;TR5;ESKA 887.112;Reichelt ESKA 887.112;-
+21;1;RV1;Varistor 275 V~ 0,25 W;Scheibe 7 mm RM 5;-;Reichelt VDR-0,25 270;nach der Sicherung

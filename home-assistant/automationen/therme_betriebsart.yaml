@@ -1,0 +1,47 @@
+id: '1795679073393'
+alias: 'Therme: Betriebsart'
+description: Schaltet den Fernversteller der Wolf-Therme in die Betriebsart 'Automatik' (bedarfsgerechte Heizkurve). Bei Heizungsmodus
+  'Frostschutz' auf 'Aus'. Steht die Betriebsart von Hand auf 'Therme intern', 'Tag', 'Nacht' oder 'Test', wird nichts geändert
+  (Handbetrieb).
+mode: restart
+triggers:
+- trigger: state
+  entity_id: input_select.heizung_modus
+  not_to:
+  - unavailable
+  - unknown
+- trigger: state
+  entity_id: select.therme_fernversteller_betriebsart
+  from:
+  - unavailable
+  - unknown
+  not_to:
+  - unavailable
+  - unknown
+  note: ESP wieder erreichbar
+- trigger: homeassistant
+  event: start
+conditions:
+- condition: state
+  entity_id: select.therme_fernversteller_betriebsart
+  state:
+  - Automatik
+  - Aus
+  note: Handbetrieb nicht überschreiben
+actions:
+- if:
+  - condition: state
+    entity_id: input_select.heizung_modus
+    state: Frostschutz
+  then:
+  - action: select.select_option
+    target:
+      entity_id: select.therme_fernversteller_betriebsart
+    data:
+      option: Aus
+  else:
+  - action: select.select_option
+    target:
+      entity_id: select.therme_fernversteller_betriebsart
+    data:
+      option: Automatik

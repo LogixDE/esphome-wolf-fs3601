@@ -1,0 +1,307 @@
+# FS3601-ESP v1.2 – Ersatz für den Wolf-Fernversteller FS 3601 (Klemmen K1/K2)
+# Firmware 1.4 – ESP32-C3 Super Mini. Alle Relais-LEDs sind aktiv LOW (inverted: true).
+#
+# Zuordnung (Platine v1.2):
+#   K1 Aus (5,11 k parallel) GPIO4 | K2 Bit0 68 Ω  GPIO3 | K3 Bit1 120 Ω GPIO1 | K4 Bit2 220 Ω GPIO0
+#   K5 Bit3 470 Ω GPIO5          | K6 Bit4 910 Ω GPIO6 | K7 Bit5 1,8 k GPIO7 | K8 Fallback (Öffner) GPIO10
+#
+# Betriebsarten:
+#   Automatik      = stufenlose Heizkurve 0…100 % (wird von Home Assistant nachgeregelt)
+#                    0 % = tiefster, 100 % = höchster Wert, den die alte FS 3601 erzeugen konnte
+#   Therme intern  = K1–K2 gebrückt, wie ohne Fernbedienung (auch Rückfall bei HA-Ausfall)
+#   Tag / Nacht    = Handbetrieb mit der Skala der alten FB (Sollwert -3…+3, Nachtregler 2…9)
+#   Aus            = Stellung 0 der alten FB
+#   Test           = direkte Ohm-Vorgabe zum Prüfen
+# Alle Ohm-Werte sind mit DEM Messgerät gemessen, mit dem auch die Original-FB
+# ausgemessen wurde. Dadurch heben sich Messfehler heraus.
+
+substitutions:
+  name: therme-fernversteller
+  friendly_name: Therme Fernversteller
+
+esphome:
+  name: ${name}
+  friendly_name: ${friendly_name}
+  comment: "Ersatz Wolf FS 3601 – Platine FS3601-ESP v1.2"
+  project:
+    name: "Fabian Harder.fs3601-esp"
+    version: "1.4"
+  on_boot:
+    priority: -100
+    then:
+      - script.execute: apply
+
+esp32:
+  board: esp32-c3-devkitm-1
+  framework:
+    type: esp-idf
+
+logger:
+  hardware_uart: USB_SERIAL_JTAG
+
+api:
+  encryption:
+    key: !secret api_encryption_key
+  reboot_timeout: 0s        # kein Neustart bei HA-Ausfall; Rückfall regelt das Intervall unten
+
+ota:
+  - platform: esphome
+    encryption:
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  reboot_timeout: 0s
+
+status_led:
+  pin:
+    number: GPIO8
+    inverted: true
+
+globals:
+  - id: api_lost_min
+    type: int
+    initial_value: '0'
+
+output:
+  - { platform: gpio, id: o_aus, pin: { number: GPIO4,  inverted: true } }
+  - { platform: gpio, id: o_b0,  pin: { number: GPIO3,  inverted: true } }
+  - { platform: gpio, id: o_b1,  pin: { number: GPIO1,  inverted: true } }
+  - { platform: gpio, id: o_b2,  pin: { number: GPIO0,  inverted: true } }
+  - { platform: gpio, id: o_b3,  pin: { number: GPIO5,  inverted: true } }
+  - { platform: gpio, id: o_b4,  pin: { number: GPIO6,  inverted: true } }
+  - { platform: gpio, id: o_b5,  pin: { number: GPIO7,  inverted: true } }
+  - { platform: gpio, id: o_fb,  pin: { number: GPIO10, inverted: true } }
+
+select:
+  - platform: template
+    name: Betriebsart
+    id: modus
+    icon: mdi:radiator
+    options:
+      - Automatik          # stufenlose Heizkurve, von HA geregelt
+      - Therme intern      # K8 geschlossen = Brücke, wie ohne Fernbedienung
+      - Tag                # Handbetrieb ☼
+      - Nacht              # Handbetrieb ☾
+      - Aus                # Stellung 0
+      - Test (Widerstand)  # direkte Ohm-Vorgabe zum Prüfen
+    initial_option: Therme intern
+    optimistic: true
+    restore_value: true
+    on_value:
+      - script.execute: apply
+
+number:
+  - platform: template
+    name: Heizkurve
+    id: heizkurve
+    icon: mdi:chart-bell-curve-cumulative
+    unit_of_measurement: "%"
+    min_value: 0
+    max_value: 100
+    step: 0.5
+    initial_value: 89     # entspricht Tag / Sollwert 0 der alten FB
+    mode: slider
+    optimistic: true
+    restore_value: true
+    on_value:
+      - script.execute: apply
+  - platform: template
+    name: Sollwert (Handbetrieb)
+    id: sollwert
+    icon: mdi:knob
+    entity_category: config
+    min_value: -3
+    max_value: 3
+    step: 0.1
+    initial_value: 0
+    mode: slider
+    optimistic: true
+    restore_value: true
+    on_value:
+      - script.execute: apply
+  - platform: template
+    name: Nachtregler (Handbetrieb)
+    id: nachtregler
+    icon: mdi:weather-night
+    entity_category: config
+    min_value: 2
+    max_value: 9
+    step: 0.1
+    initial_value: 6
+    mode: slider
+    optimistic: true
+    restore_value: true
+    on_value:
+      - script.execute: apply
+  - platform: template
+    name: Test-Widerstand
+    id: r_test
+    icon: mdi:omega
+    entity_category: diagnostic
+    unit_of_measurement: "Ω"
+    min_value: 12000
+    max_value: 17000
+    step: 1
+    initial_value: 15000
+    mode: box
+    optimistic: true
+    restore_value: true
+    on_value:
+      - script.execute: apply
+
+sensor:
+  - platform: template
+    name: Widerstand Ziel
+    id: r_ziel
+    entity_category: diagnostic
+    unit_of_measurement: "Ω"
+    accuracy_decimals: 0
+    icon: mdi:target
+    update_interval: never
+  - platform: template
+    name: Widerstand K1-K2
+    id: r_ist
+    entity_category: diagnostic
+    unit_of_measurement: "Ω"
+    accuracy_decimals: 0
+    icon: mdi:omega
+    update_interval: never
+  - platform: uptime
+    name: Betriebszeit
+    type: seconds
+    entity_category: diagnostic
+  - platform: wifi_signal
+    name: WLAN-Signal
+    update_interval: 60s
+    entity_category: diagnostic
+
+text_sensor:
+  - platform: version
+    name: ESPHome-Version
+    hide_timestamp: true
+    entity_category: diagnostic
+  - platform: wifi_info
+    ip_address:
+      name: IP-Adresse
+      entity_category: diagnostic
+
+binary_sensor:
+  - platform: status
+    name: Online
+    entity_category: diagnostic
+  - platform: template
+    name: Rückfall aktiv
+    id: fallback_active
+    device_class: problem
+    entity_category: diagnostic
+  - platform: template
+    name: Sollwert begrenzt
+    id: begrenzt
+    entity_category: diagnostic
+    device_class: problem
+
+script:
+  - id: apply
+    mode: restart
+    then:
+      - lambda: |-
+          // ---------- Kalibrierung Platine (eigene Messung, Mittel beider Polungen) ----------
+          const float r0 = 12883.0f;   // alle Bit-Relais geschlossen
+          const float rbit[6] = {68.0f, 120.0f, 215.0f, 458.0f, 884.0f, 1727.0f};
+          const float r_aus_par = 5107.0f;   // R8
+
+          // ---------- Kennfeld Original-FS 3601 (Raumeinfluss 0) ----------
+          const float r_fb_min = 12964.0f;   // Sollwert -3, Nachtregler 2
+          const float r_fb_max = 16297.0f;   // Tag, Sollwert +3
+          static const float day[7] = {15442, 15544, 15762, 15937, 16097, 16230, 16297};
+          static const float dn[3][8] = {
+            {2478, 2032, 1587, 1272, 852, 488, 192,   4},   // Sollwert -3
+            {1244, 1040,  841,  650, 465, 267, 106, -35},   // Sollwert  0
+            { 806,  687,  560,  437, 321, 181,  72,   3},   // Sollwert +3
+          };
+          const float r_aus_fb = 3872.0f;    // Stellung 0 der FS 3601
+
+          auto lerp = [](const float *t, int n, float x) {   // x in 0 … n-1
+            if (x <= 0) return t[0];
+            if (x >= n - 1) return t[n - 1];
+            int i = (int) x; float f = x - i;
+            return t[i] + (t[i + 1] - t[i]) * f;
+          };
+
+          // Rückfall auf "Therme intern", wenn HA länger als 30 min nicht verbunden ist
+          const bool lost = id(api_lost_min) >= 30;
+          std::string m = lost ? std::string("Therme intern") : id(modus).current_option().str();
+          id(fallback_active).publish_state(lost);
+
+          const float s = id(sollwert).state;
+          const float n = id(nachtregler).state;
+          const float r_tag = lerp(day, 7, s + 3.0f);
+          float target;
+          bool fb_open = true, aus_on = false;
+          if (m == "Automatik") {
+            target = r_fb_min + (r_fb_max - r_fb_min) * id(heizkurve).state / 100.0f;
+          } else if (m == "Therme intern") {
+            fb_open = false; target = r_tag;
+          } else if (m == "Tag") {
+            target = r_tag;
+          } else if (m == "Nacht") {
+            const float rowpos = (s + 3.0f) / 3.0f;   // 0 … 2 (Zeilen -3 / 0 / +3)
+            const float d_lo = lerp(dn[rowpos < 1 ? 0 : 1], 8, n - 2.0f);
+            const float d_hi = lerp(dn[rowpos < 1 ? 1 : 2], 8, n - 2.0f);
+            const float f = rowpos < 1 ? rowpos : rowpos - 1.0f;
+            target = r_tag - (d_lo + (d_hi - d_lo) * f);
+          } else if (m == "Aus") {
+            aus_on = true;
+            target = 1.0f / (1.0f / r_aus_fb - 1.0f / r_aus_par);
+          } else {
+            target = id(r_test).state;
+          }
+
+          // ---------- beste Bit-Kombination ----------
+          float rmax = r0; for (int i = 0; i < 6; i++) rmax += rbit[i];
+          const bool clip = target < r0 - 30 || target > rmax + 30;
+          int best = 0; float best_r = r0, best_err = 1e9f;
+          for (int c = 0; c < 64; c++) {
+            float r = r0;
+            for (int i = 0; i < 6; i++) if ((c >> i) & 1) r += rbit[i];
+            const float e = fabsf(r - target);
+            if (e < best_err) { best_err = e; best = c; best_r = r; }
+          }
+          output::BinaryOutput *bits[6] = {id(o_b0), id(o_b1), id(o_b2), id(o_b3), id(o_b4), id(o_b5)};
+          for (int i = 0; i < 6; i++) {
+            if ((best >> i) & 1) bits[i]->turn_off(); else bits[i]->turn_on();  // Relais an = überbrückt
+          }
+          if (aus_on) id(o_aus)->turn_on(); else id(o_aus)->turn_off();
+          if (fb_open) id(o_fb)->turn_on(); else id(o_fb)->turn_off();   // Öffner: LED an = offen
+
+          float r_out = best_r;
+          if (aus_on) r_out = best_r * r_aus_par / (best_r + r_aus_par);
+          if (!fb_open) r_out = 0;
+          id(r_ziel).publish_state(aus_on ? r_aus_fb : (fb_open ? target : 0));
+          id(r_ist).publish_state(r_out);
+          id(begrenzt).publish_state(fb_open && !aus_on && clip);
+          ESP_LOGI("fs3601", "%s Kurve=%.1f%% S=%.1f N=%.1f Ziel=%.0f -> Kombi=%d %.0f Ohm%s",
+                   m.c_str(), id(heizkurve).state, s, n, target, best, r_out, clip ? " (begrenzt)" : "");
+
+interval:
+  - interval: 1min
+    then:
+      - if:
+          condition: api.connected
+          then:
+            - if:
+                condition:
+                  lambda: 'return id(api_lost_min) >= 30;'
+                then:
+                  - lambda: 'id(api_lost_min) = 0;'
+                  - script.execute: apply
+                else:
+                  - lambda: 'id(api_lost_min) = 0;'
+          else:
+            - lambda: 'id(api_lost_min)++;'
+            - if:
+                condition:
+                  lambda: 'return id(api_lost_min) == 30;'
+                then:
+                  - script.execute: apply

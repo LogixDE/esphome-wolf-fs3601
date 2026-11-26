@@ -1,0 +1,79 @@
+id: '1795679050112'
+alias: 'Heizkurve: bedarfsgerecht regeln'
+description: Regelt die stufenlose Heizkurve (0–100 %) des Fernverstellers alle 10 min nach dem tatsächlichen Bedarf der Räume
+  nach. Die Therme führt den Vorlauf selbst nach der Außentemperatur; dieser Regler trimmt nur. Schnell rauf, wenn Räume unterversorgt
+  sind oder der Rücklauf (Kesselschutz NG-2E) zu kalt wird; langsam runter, solange alle Räume versorgt sind und die Ventile
+  Reserve haben.
+mode: single
+triggers:
+- trigger: time_pattern
+  minutes: /10
+conditions:
+- condition: state
+  entity_id: select.therme_fernversteller_betriebsart
+  state: Automatik
+- condition: numeric_state
+  entity_id: number.therme_fernversteller_heizkurve
+  above: -1
+  note: ESP erreichbar
+variables:
+  kurve: '{{ states(''number.therme_fernversteller_heizkurve'') | float(89) }}'
+actions:
+- choose:
+  - alias: 'Bedarf / Kesselschutz: Kurve anheben (+2 %)'
+    conditions:
+    - condition: or
+      conditions:
+      - condition: numeric_state
+        entity_id: sensor.heizung_unterversorgte_raume
+        above: 1.5
+      - condition: and
+        conditions:
+        - condition: numeric_state
+          entity_id: sensor.heizung_unterversorgte_raume
+          above: 0.5
+        - condition: numeric_state
+          entity_id: sensor.heizung_grosstes_raumdefizit
+          above: 1
+      - condition: and
+        note: 'Kesselschutz: Rücklauf im Heizbetrieb zu kalt'
+        conditions:
+        - condition: numeric_state
+          entity_id: sensor.heizungskeller_heizung_rucklauf_mittel_30_min
+          below: 43
+        - condition: state
+          entity_id: binary_sensor.heizung_brenner_lauft
+          state: 'on'
+    - condition: numeric_state
+      entity_id: number.therme_fernversteller_heizkurve
+      below: 100
+    sequence:
+    - action: number.set_value
+      target:
+        entity_id: number.therme_fernversteller_heizkurve
+      data:
+        value: '{{ [kurve + 2, 100] | min }}'
+  - alias: 'Reserve: Kurve absenken (−0,5 %)'
+    conditions:
+    - condition: numeric_state
+      entity_id: sensor.heizung_unterversorgte_raume
+      below: 0.5
+    - condition: numeric_state
+      entity_id: sensor.heizung_ventilstellung_max
+      below: 60
+    - condition: numeric_state
+      entity_id: sensor.heizung_grosstes_raumdefizit
+      below: 0.31
+    - condition: numeric_state
+      entity_id: sensor.heizungskeller_heizung_rucklauf_mittel_30_min
+      above: 47
+      note: 'Kesselschutz: nicht weiter absenken, wenn der Rücklauf schon nahe der Untergrenze liegt'
+    - condition: numeric_state
+      entity_id: number.therme_fernversteller_heizkurve
+      above: 0
+    sequence:
+    - action: number.set_value
+      target:
+        entity_id: number.therme_fernversteller_heizkurve
+      data:
+        value: '{{ [kurve - 0.5, 0] | max }}'
